@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  database:
+    image: postgres:16-alpine
+    container_name: medclinic-postgres
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: medclinic-db
+    ports:
+      - '5435:5432'
+    volumes:
+      - medclinic-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  medclinic-postgres-data:
