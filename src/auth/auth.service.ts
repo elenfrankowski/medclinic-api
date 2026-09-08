@@ -9,7 +9,7 @@ import { JwtService } from '@nestjs/jwt'
 import { LoginDto } from './dtos/login.dto'
 import { RegistrarDto } from './dtos/registrar.dto'
 import { UsuarioRespostaDto } from './dtos/usuario-resposta.dto'
-import { UsuarioRepository } from './repositories/usuario.repository'
+import type { UsuarioRepository } from './repositories/usuario.repository'
 import { RoleEnum } from '../@common/enums/role.enum'
 import { compararHash, gerarHash } from '../@common/utils/hash.util'
 
