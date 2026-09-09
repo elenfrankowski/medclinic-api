@@ -16,7 +16,7 @@ import { compararHash, gerarHash } from '../@common/utils/hash.util'
 @Injectable()
 export class AuthService {
   constructor(
-    @Inject('UsuarioRepository')
+    @Inject('USUARIO_REPOSITORY')
     private readonly usuarioRepository: UsuarioRepository,
     private readonly jwtService: JwtService
   ) {}

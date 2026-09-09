@@ -17,7 +17,7 @@ import type { UsuarioRepository } from '../auth/repositories/usuario.repository'
 @Controller('users')
 export class UsersController {
   constructor(
-    @Inject('UsuarioRepository')
+    @Inject('USUARIO_REPOSITORY')
     private readonly usuarioRepository: UsuarioRepository
   ) {}
 

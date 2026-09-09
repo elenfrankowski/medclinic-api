@@ -13,7 +13,7 @@ import { Usuario } from '../@common/entities/usuario.entity'
 @Module({
   imports: [
     TypeOrmModule.forFeature([Usuario]),
-    PassportModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: process.env.JWT_SECRET ?? 'segredo-provisorio-trocar-em-producao',
       signOptions: {
@@ -25,9 +25,9 @@ import { Usuario } from '../@common/entities/usuario.entity'
   controllers: [AuthController],
   providers: [
     AuthService,
-    { provide: 'UsuarioRepository', useClass: UsuarioTypeormRepository },
+    { provide: 'USUARIO_REPOSITORY', useClass: UsuarioTypeormRepository },
     JwtStrategy
   ],
-  exports: [JwtStrategy, PassportModule]
+  exports: [JwtStrategy, PassportModule, JwtModule, 'USUARIO_REPOSITORY']
 })
 export class AuthModule {}
