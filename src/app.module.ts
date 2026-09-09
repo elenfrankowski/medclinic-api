@@ -3,7 +3,9 @@ import { ConfigModule } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
 
 import { Usuario } from './@common/entities/usuario.entity'
+import { AdminModule } from './admin/admin.module'
 import { AuthModule } from './auth/auth.module'
+import { UsersModule } from './users/users.module'
 
 @Module({
   imports: [
@@ -19,7 +21,9 @@ import { AuthModule } from './auth/auth.module'
       logging: true,
       entities: [Usuario]
     }),
-    AuthModule
+    AuthModule,
+    UsersModule,
+    AdminModule
   ]
 })
 export class AppModule {}
