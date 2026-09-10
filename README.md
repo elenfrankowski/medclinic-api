@@ -1,114 +1,237 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# MedClinic API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API REST para gerenciamento de uma clínica médica de pequeno porte, desenvolvida em Node.js, TypeScript e NestJS.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+> **Escopo desta etapa:** esta entrega compreende exclusivamente a **base de autenticação e autorização** do sistema (cadastro de usuários, login com JWT e controle de acesso por perfis). As funcionalidades de domínio da clínica (especialidades, médicos, pacientes e consultas) serão implementadas em uma etapa futura, sobre esta mesma base de código.
 
-## Description
+## Sumário
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- [Sobre o projeto](#sobre-o-projeto)
+- [Tecnologias utilizadas](#tecnologias-utilizadas)
+- [Arquitetura](#arquitetura)
+- [Requisitos para execução](#requisitos-para-execução)
+- [Configuração do ambiente](#configuração-do-ambiente)
+- [Instalação e execução](#instalação-e-execução)
+- [Perfis de acesso](#perfis-de-acesso)
+- [Documentação dos endpoints](#documentação-dos-endpoints)
+- [Estrutura de pastas](#estrutura-de-pastas)
 
-## Project setup
+## Sobre o projeto
 
-```bash
-$ npm install
-```
+O sistema permitirá, futuramente, o gerenciamento completo de uma clínica médica. Nesta primeira etapa, foi construída a base de acesso: cadastro de usuários com senha criptografada, autenticação via JWT e autorização baseada em perfis (RBAC), preparando a estrutura para receber os módulos de domínio (especialidades, médicos, pacientes e consultas) sem necessidade de reestruturação da arquitetura.
 
-## Compile and run the project
+## Tecnologias utilizadas
 
-```bash
-# development
-$ npm run start
+- **Node.js** e **TypeScript**
+- **NestJS** — framework HTTP, com injeção de dependência nativa
+- **TypeORM** — ORM para PostgreSQL
+- **PostgreSQL** — banco de dados relacional (via Docker)
+- **Passport + passport-jwt** — estratégia de autenticação
+- **@nestjs/jwt** — emissão e verificação de tokens JWT
+- **bcrypt** — hash de senhas
+- **class-validator / class-transformer** — validação e transformação de DTOs
 
-# watch mode
-$ npm run start:dev
+## Arquitetura
 
-# production mode
-$ npm run start:prod
-```
+O projeto segue uma arquitetura organizada em camadas, equivalente ao modelo MVC solicitado, adaptada aos recursos nativos do NestJS:
 
-## Run tests
+| Camada solicitada        | Implementação no projeto                                                                                                                             |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Server / Main**        | `src/main.ts` — inicializa a aplicação Nest, carrega variáveis de ambiente e registra pipes/filtros globais                                          |
+| **Routes + Controllers** | Classes `*.controller.ts`, com rotas definidas via decorators (`@Controller`, `@Get`, `@Post`) em vez de arquivos de rota separados                  |
+| **Middlewares**          | `Guards` do NestJS (`JwtAuthGuard` para autenticação, `RolesGuard` para autorização/RBAC) e o `ValidationPipe` global para validação de entrada      |
+| **Services**             | Classes `*.service.ts`, responsáveis pelas regras de negócio                                                                                         |
+| **Repositories**         | Interface + implementação (`usuario.repository.ts` / `usuario-typeorm.repository.ts`), injetadas via token customizado, isolando o acesso ao TypeORM |
+| **Entities**             | `src/@common/entities/usuario.entity.ts`, com decorators do TypeORM                                                                                  |
+| **Database**             | `src/database/`, contendo a configuração de conexão (via `TypeOrmModule.forRoot` em `app.module.ts`) e o script `schema.sql`                         |
+| **Utils**                | `src/@common/utils/hash.util.ts` — geração e comparação de hash de senha                                                                             |
 
-```bash
-# unit tests
-$ npm run test
+Tratamento de erros centralizado é feito por um `ExceptionFilter` global (`HttpExceptionFilter`), aplicado no `main.ts`, que padroniza todas as respostas de erro da API em JSON.
 
-# e2e tests
-$ npm run test:e2e
+## Requisitos para execução
 
-# test coverage
-$ npm run test:cov
-```
+- Node.js 18+
+- Docker e Docker Compose
 
-## Deployment
+## Configuração do ambiente
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+### Banco de dados (Docker)
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+docker compose up -d
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+O banco é criado automaticamente pelo TypeORM (`synchronize: true`) na primeira execução. O script `src/database/schema.sql` documenta a estrutura da tabela criada.
 
-## Observability
+### Variáveis de ambiente
 
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
+Crie um arquivo `.env` na raiz do projeto:
 
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
+```dotenv
+PORT=3000
+DB_HOST=localhost
+DB_PORT=5435
+DB_USER=admin
+DB_PASSWORD=admin123
+DB_NAME=medclinic-db
+JWT_SECRET=uma-chave-bem-longa-e-aleatoria-so-sua
+JWT_EXPIRES_IN=1h
+```
 
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+## Instalação e execução
 
-## Resources
+```bash
+git clone https://github.com/elenfrankowski/medclinic-api.git
+cd medclinic-api
+npm install
+docker compose up -d
+npm run start:dev
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+A API sobe em `http://localhost:3000`.
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+Outros scripts disponíveis:
 
-## Support
+- `npm run build` — compila o projeto para produção
+- `npm run start:prod` — executa a versão compilada
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+## Perfis de acesso
 
-## Stay in touch
+| Perfil          | Descrição                                                                                                 |
+| --------------- | --------------------------------------------------------------------------------------------------------- |
+| `administrador` | Acesso completo às funcionalidades da API                                                                 |
+| `atendente`     | Acesso operacional, com permissões restritas (perfil padrão ao registrar, caso `role` não seja informado) |
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Documentação dos endpoints
 
-## License
+### `POST /auth/register`
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Cadastra um novo usuário. Rota pública.
+
+**Body:**
+
+```json
+{
+  "nome": "Dra. Ana",
+  "email": "ana@medclinic.com",
+  "senha": "123456",
+  "role": "administrador"
+}
+```
+
+`role` é opcional — se omitido, o padrão é `atendente`.
+
+**Resposta (201):**
+
+```json
+{
+  "id": "dd29510a-d426-4636-b79e-d4e78c0fe1b7",
+  "nome": "Dra. Ana",
+  "email": "ana@medclinic.com",
+  "role": "administrador",
+  "criadoEm": "2026-09-09T07:20:32.859Z"
+}
+```
+
+**Erros possíveis:** `400` (campos inválidos/ausentes), `409` (e-mail já cadastrado).
+
+### `POST /auth/login`
+
+Autentica um usuário e retorna um token JWT. Rota pública.
+
+**Body:**
+
+```json
+{
+  "email": "ana@medclinic.com",
+  "senha": "123456"
+}
+```
+
+**Resposta (200):**
+
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Erros possíveis:** `401` (credenciais inválidas — mensagem genérica, sem indicar qual campo está incorreto).
+
+### `GET /users/me`
+
+Retorna os dados do usuário autenticado. Requer token JWT válido.
+
+**Header:** `Authorization: Bearer <token>`
+
+**Resposta (200):**
+
+```json
+{
+  "id": "dd29510a-d426-4636-b79e-d4e78c0fe1b7",
+  "nome": "Dra. Ana",
+  "email": "ana@medclinic.com",
+  "role": "administrador",
+  "criadoEm": "2026-09-09T07:20:32.859Z"
+}
+```
+
+**Erros possíveis:** `401` (token ausente, inválido ou expirado).
+
+### `GET /admin/ping`
+
+Endpoint protegido, acessível apenas pelo perfil `administrador`. Demonstra o funcionamento do RBAC.
+
+**Header:** `Authorization: Bearer <token>`
+
+**Resposta (200) — usuário administrador:**
+
+```json
+{
+  "mensagem": "Pong! Você tem acesso de administrador."
+}
+```
+
+**Resposta (403) — usuário atendente:**
+
+```json
+{
+  "statusCode": 403,
+  "message": {
+    "message": "Você não tem permissão para acessar este recurso.",
+    "error": "Forbidden",
+    "statusCode": 403
+  },
+  "timestamp": "2026-09-09T04:41:58.558Z"
+}
+```
+
+## Estrutura de pastas
+
+```
+src/
+├── @common/
+│   ├── entities/          # Entidades TypeORM (Usuario)
+│   ├── enums/             # RoleEnum
+│   ├── filters/           # HttpExceptionFilter (tratamento central de erros)
+│   └── utils/             # hash.util.ts (bcrypt)
+├── auth/
+│   ├── decorators/        # @Roles, @CurrentUser
+│   ├── dtos/               # RegistrarDto, LoginDto, UsuarioRespostaDto
+│   ├── guards/             # JwtAuthGuard, RolesGuard
+│   ├── repositories/       # Interface + implementação TypeORM
+│   ├── strategies/         # JwtStrategy
+│   ├── auth.controller.ts
+│   ├── auth.service.ts
+│   └── auth.module.ts
+├── users/
+│   ├── users.controller.ts # GET /users/me
+│   └── users.module.ts
+├── admin/
+│   ├── admin.controller.ts # GET /admin/ping
+│   └── admin.module.ts
+├── database/
+│   └── schema.sql          # Script de criação da tabela usuario
+├── app.module.ts
+└── main.ts
+```
