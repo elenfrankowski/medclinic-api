@@ -17,7 +17,9 @@ import { UsersModule } from './users/users.module'
       username: process.env.DB_USER ?? 'admin',
       password: process.env.DB_PASSWORD ?? 'admin123',
       database: process.env.DB_NAME ?? 'medclinic-db',
-      synchronize: true,
+      synchronize: false,
+      migrationsRun: true,
+      migrations: ['dist/database/migrations/*.js'],
       logging: true,
       entities: [Usuario]
     }),
