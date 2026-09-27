@@ -2,7 +2,7 @@
 
 API REST para gerenciamento de uma clínica médica de pequeno porte, desenvolvida em Node.js, TypeScript e NestJS.
 
-> **Escopo desta etapa:** esta entrega compreende exclusivamente a **base de autenticação e autorização** do sistema (cadastro de usuários, login com JWT e controle de acesso por perfis). As funcionalidades de domínio da clínica (especialidades, médicos, pacientes e consultas) serão implementadas em uma etapa futura, sobre esta mesma base de código.
+> **Escopo desta etapa:** esta entrega compreende exclusivamente a **base de autenticação e autorização** do sistema (cadastro de usuários, login com JWT e controle de acesso por perfis). As funcionalidades de domínio da clínica — especialidades, médicos, pacientes e consultas — serão implementadas em uma etapa futura, sobre esta mesma base de código.
 
 ## Sumário
 
@@ -12,6 +12,7 @@ API REST para gerenciamento de uma clínica médica de pequeno porte, desenvolvi
 - [Requisitos para execução](#requisitos-para-execução)
 - [Configuração do ambiente](#configuração-do-ambiente)
 - [Instalação e execução](#instalação-e-execução)
+- [Migrations do banco de dados](#migrations-do-banco-de-dados)
 - [Perfis de acesso](#perfis-de-acesso)
 - [Documentação dos endpoints](#documentação-dos-endpoints)
 - [Estrutura de pastas](#estrutura-de-pastas)
@@ -24,7 +25,7 @@ O sistema permitirá, futuramente, o gerenciamento completo de uma clínica méd
 
 - **Node.js** e **TypeScript**
 - **NestJS** — framework HTTP, com injeção de dependência nativa
-- **TypeORM** — ORM para PostgreSQL
+- **TypeORM** — ORM para PostgreSQL, com migrations versionadas
 - **PostgreSQL** — banco de dados relacional (via Docker)
 - **Passport + passport-jwt** — estratégia de autenticação
 - **@nestjs/jwt** — emissão e verificação de tokens JWT
@@ -35,16 +36,16 @@ O sistema permitirá, futuramente, o gerenciamento completo de uma clínica méd
 
 O projeto segue uma arquitetura organizada em camadas, equivalente ao modelo MVC solicitado, adaptada aos recursos nativos do NestJS:
 
-| Camada solicitada        | Implementação no projeto                                                                                                                             |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Server / Main**        | `src/main.ts` — inicializa a aplicação Nest, carrega variáveis de ambiente e registra pipes/filtros globais                                          |
-| **Routes + Controllers** | Classes `*.controller.ts`, com rotas definidas via decorators (`@Controller`, `@Get`, `@Post`) em vez de arquivos de rota separados                  |
-| **Middlewares**          | `Guards` do NestJS (`JwtAuthGuard` para autenticação, `RolesGuard` para autorização/RBAC) e o `ValidationPipe` global para validação de entrada      |
-| **Services**             | Classes `*.service.ts`, responsáveis pelas regras de negócio                                                                                         |
-| **Repositories**         | Interface + implementação (`usuario.repository.ts` / `usuario-typeorm.repository.ts`), injetadas via token customizado, isolando o acesso ao TypeORM |
-| **Entities**             | `src/@common/entities/usuario.entity.ts`, com decorators do TypeORM                                                                                  |
-| **Database**             | `src/database/`, contendo a configuração de conexão (via `TypeOrmModule.forRoot` em `app.module.ts`) e o script `schema.sql`                         |
-| **Utils**                | `src/@common/utils/hash.util.ts` — geração e comparação de hash de senha                                                                             |
+| Camada solicitada        | Implementação no projeto                                                                                                                                                                                                                                                                                           |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Server / Main**        | `src/main.ts` — inicializa a aplicação Nest, carrega variáveis de ambiente e registra pipes/filtros globais                                                                                                                                                                                                        |
+| **Routes + Controllers** | Classes `*.controller.ts`, com rotas definidas via decorators (`@Controller`, `@Get`, `@Post`) em vez de arquivos de rota separados. Os controllers não acessam repositórios diretamente — toda requisição é delegada a um `Service`                                                                               |
+| **Middlewares**          | `Guards` do NestJS (`JwtAuthGuard` para autenticação, `RolesGuard` para autorização/RBAC) e o `ValidationPipe` global para validação de entrada                                                                                                                                                                    |
+| **Services**             | Classes `*.service.ts` (`AuthService`, `UsersService`), responsáveis pelas regras de negócio e pela orquestração entre Controllers e Repositories                                                                                                                                                                  |
+| **Repositories**         | Interface + implementação (`usuario.repository.ts` / `usuario-typeorm.repository.ts`), injetadas via token customizado (`USUARIO_REPOSITORY`). Essa inversão de dependência permite trocar a implementação de persistência (por exemplo, em testes) alterando apenas o `provide` do módulo, sem tocar nos Services |
+| **Entities**             | `src/@common/entities/usuario.entity.ts`, com decorators do TypeORM                                                                                                                                                                                                                                                |
+| **Database**             | `src/database/`, contendo o `DataSource` usado pela CLI (`data-source.ts`), as migrations versionadas (`migrations/`) e o script `schema.sql` de referência                                                                                                                                                        |
+| **Utils**                | `src/@common/utils/hash.util.ts` — geração e comparação de hash de senha                                                                                                                                                                                                                                           |
 
 Tratamento de erros centralizado é feito por um `ExceptionFilter` global (`HttpExceptionFilter`), aplicado no `main.ts`, que padroniza todas as respostas de erro da API em JSON.
 
@@ -61,7 +62,7 @@ Tratamento de erros centralizado é feito por um `ExceptionFilter` global (`Http
 docker compose up -d
 ```
 
-O banco é criado automaticamente pelo TypeORM (`synchronize: true`) na primeira execução. O script `src/database/schema.sql` documenta a estrutura da tabela criada.
+O schema do banco é criado e versionado por **migrations do TypeORM** (não por `synchronize`, que é desabilitado em todos os ambientes). Ao subir a aplicação, as migrations pendentes são executadas automaticamente (`migrationsRun: true`), garantindo que o schema fique sempre reprodutível — em desenvolvimento, CI ou produção — sem depender de sincronização automática baseada nas entidades.
 
 ### Variáveis de ambiente
 
@@ -88,12 +89,29 @@ docker compose up -d
 npm run start:dev
 ```
 
-A API sobe em `http://localhost:3000`.
+A API sobe em `http://localhost:3000`. As migrations pendentes são aplicadas automaticamente na inicialização.
 
 Outros scripts disponíveis:
 
 - `npm run build` — compila o projeto para produção
 - `npm run start:prod` — executa a versão compilada
+
+## Migrations do banco de dados
+
+O projeto utiliza migrations do TypeORM para versionar a estrutura do banco, em vez de `synchronize: true`. Scripts disponíveis:
+
+```bash
+# Executa manualmente as migrations pendentes
+npm run migration:run
+
+# Reverte a última migration aplicada
+npm run migration:revert
+
+# Gera uma nova migration a partir de mudanças nas entidades
+npm run migration:generate -- src/database/migrations/NomeDaMigration
+```
+
+Em desenvolvimento local, não é necessário rodar `migration:run` manualmente — a aplicação já executa as migrations pendentes automaticamente ao iniciar (`migrationsRun: true`), conforme descrito acima.
 
 ## Perfis de acesso
 
@@ -160,7 +178,7 @@ Autentica um usuário e retorna um token JWT. Rota pública.
 
 ### `GET /users/me`
 
-Retorna os dados do usuário autenticado. Requer token JWT válido.
+Retorna os dados do usuário autenticado. Requer token JWT válido. O controller delega a busca ao `UsersService`, que consulta o repositório e trata o caso de usuário não encontrado.
 
 **Header:** `Authorization: Bearer <token>`
 
@@ -219,19 +237,22 @@ src/
 │   ├── decorators/        # @Roles, @CurrentUser
 │   ├── dtos/               # RegistrarDto, LoginDto, UsuarioRespostaDto
 │   ├── guards/             # JwtAuthGuard, RolesGuard
-│   ├── repositories/       # Interface + implementação TypeORM
+│   ├── repositories/       # Interface + implementação TypeORM (token USUARIO_REPOSITORY)
 │   ├── strategies/         # JwtStrategy
 │   ├── auth.controller.ts
 │   ├── auth.service.ts
 │   └── auth.module.ts
 ├── users/
-│   ├── users.controller.ts # GET /users/me
+│   ├── users.controller.ts # GET /users/me (delega ao UsersService)
+│   ├── users.service.ts    # Regra de negócio: busca de perfil do usuário autenticado
 │   └── users.module.ts
 ├── admin/
 │   ├── admin.controller.ts # GET /admin/ping
 │   └── admin.module.ts
 ├── database/
-│   └── schema.sql          # Script de criação da tabela usuario
+│   ├── data-source.ts       # DataSource usado pela CLI de migrations
+│   ├── migrations/          # Migrations versionadas do TypeORM
+│   └── schema.sql           # Script de referência da estrutura do banco
 ├── app.module.ts
 └── main.ts
 ```
