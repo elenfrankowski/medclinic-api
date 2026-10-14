@@ -2,13 +2,13 @@ import * as bcrypt from 'bcrypt'
 
 const SALT_ROUNDS = 10
 
-export async function gerarHash(valor: string): Promise<string> {
-  return bcrypt.hash(valor, SALT_ROUNDS)
+export function hashPassword(plainPassword: string): Promise<string> {
+  return bcrypt.hash(plainPassword, SALT_ROUNDS)
 }
 
-export async function compararHash(
-  valor: string,
-  hash: string
+export function comparePassword(
+  plainPassword: string,
+  passwordHash: string
 ): Promise<boolean> {
-  return bcrypt.compare(valor, hash)
+  return bcrypt.compare(plainPassword, passwordHash)
 }
