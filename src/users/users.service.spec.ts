@@ -1,17 +1,17 @@
-import { NotFoundException } from '@nestjs/common'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+import { buildUser, buildUserRepositoryFake } from './user.fixture'
 import { UsersService } from './users.service'
-import type { Usuario } from '../@common/entities/usuario.entity'
 import { RoleEnum } from '../@common/enums/role.enum'
-import type { UsuarioRepository } from '../auth/repositories/usuario.repository'
+import { hashPassword } from '../@common/utils/hash.util'
+
+vi.mock('../@common/utils/hash.util', () => ({
+  hashPassword: vi.fn(),
+  comparePassword: vi.fn()
+}))
 
 describe('UsersService', () => {
-  const repository = {
-    criar: vi.fn<UsuarioRepository['criar']>(),
-    buscarPorEmail: vi.fn<UsuarioRepository['buscarPorEmail']>(),
-    buscarPorId: vi.fn<UsuarioRepository['buscarPorId']>()
-  }
+  const repository = buildUserRepositoryFake()
   let service: UsersService
 
   beforeEach(() => {
@@ -19,28 +19,68 @@ describe('UsersService', () => {
     service = new UsersService(repository)
   })
 
-  it('devolve o perfil do usuário sem a senha', async () => {
-    const usuario: Usuario = {
-      id: 'id-1',
-      nome: 'Dra. Ana',
-      email: 'ana@medclinic.com',
-      senha: 'hash-da-senha',
-      role: RoleEnum.ADMINISTRADOR,
-      criadoEm: new Date('2026-10-01T10:00:00Z')
+  describe('create', () => {
+    const dto = {
+      name: 'Joana',
+      email: 'joana@medclinic.com',
+      password: 'SenhaForte@123',
+      roles: [RoleEnum.SECRETARY]
     }
-    repository.buscarPorId.mockResolvedValue(usuario)
 
-    const perfil = await service.buscarPerfil('id-1')
+    it('recusa e-mail já cadastrado sem gravar', async () => {
+      repository.findByEmail.mockResolvedValue(buildUser())
 
-    expect(perfil).toMatchObject({ id: 'id-1', email: 'ana@medclinic.com' })
-    expect(perfil).not.toHaveProperty('senha')
+      await expect(service.create(dto)).rejects.toMatchObject({
+        code: 'EMAIL_JA_CADASTRADO'
+      })
+      expect(repository.create).not.toHaveBeenCalled()
+    })
+
+    it('grava o hash da senha e devolve o usuário sem a senha', async () => {
+      repository.findByEmail.mockResolvedValue(null)
+      vi.mocked(hashPassword).mockResolvedValue('hash-gerado')
+      repository.create.mockImplementation((data) =>
+        Promise.resolve(buildUser({ id: 2, ...data }))
+      )
+
+      const result = await service.create(dto)
+
+      expect(hashPassword).toHaveBeenCalledWith('SenhaForte@123')
+      expect(repository.create).toHaveBeenCalledWith({
+        name: 'Joana',
+        email: 'joana@medclinic.com',
+        password: 'hash-gerado',
+        roles: [RoleEnum.SECRETARY]
+      })
+      expect(result).toEqual({
+        id: 2,
+        name: 'Joana',
+        email: 'joana@medclinic.com',
+        roles: [RoleEnum.SECRETARY]
+      })
+    })
   })
 
-  it('falha quando o usuário não existe', async () => {
-    repository.buscarPorId.mockResolvedValue(null)
+  describe('getProfile', () => {
+    it('devolve o perfil sem a senha', async () => {
+      repository.findById.mockResolvedValue(buildUser())
 
-    await expect(service.buscarPerfil('inexistente')).rejects.toBeInstanceOf(
-      NotFoundException
-    )
+      const profile = await service.getProfile(1)
+
+      expect(profile).toEqual({
+        id: 1,
+        name: 'Dra. Ana',
+        email: 'ana@medclinic.com',
+        roles: [RoleEnum.ADMIN]
+      })
+    })
+
+    it('falha quando o usuário não existe', async () => {
+      repository.findById.mockResolvedValue(null)
+
+      await expect(service.getProfile(99)).rejects.toMatchObject({
+        code: 'RECURSO_NAO_ENCONTRADO'
+      })
+    })
   })
 })
