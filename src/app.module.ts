@@ -1,31 +1,17 @@
 import { Module } from '@nestjs/common'
-import { ConfigModule } from '@nestjs/config'
 import { TypeOrmModule } from '@nestjs/typeorm'
 
-import { Usuario } from './@common/entities/usuario.entity'
-import { AdminModule } from './admin/admin.module'
 import { AuthModule } from './auth/auth.module'
+import { buildDataSourceOptions } from './database/database.config'
+import { HealthModule } from './health/health.module'
 import { UsersModule } from './users/users.module'
 
 @Module({
   imports: [
-    ConfigModule.forRoot(),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.DB_HOST ?? 'localhost',
-      port: Number(process.env.DB_PORT ?? 5435),
-      username: process.env.DB_USER ?? 'admin',
-      password: process.env.DB_PASSWORD ?? 'admin123',
-      database: process.env.DB_NAME ?? 'medclinic-db',
-      synchronize: false,
-      migrationsRun: true,
-      migrations: ['dist/database/migrations/*.js'],
-      logging: true,
-      entities: [Usuario]
-    }),
+    TypeOrmModule.forRoot({ ...buildDataSourceOptions(), migrationsRun: true }),
     AuthModule,
     UsersModule,
-    AdminModule
+    HealthModule
   ]
 })
 export class AppModule {}

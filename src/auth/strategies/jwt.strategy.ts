@@ -2,11 +2,13 @@ import { Injectable } from '@nestjs/common'
 import { PassportStrategy } from '@nestjs/passport'
 import { ExtractJwt, Strategy } from 'passport-jwt'
 
-import { RoleEnum } from '../../@common/enums/role.enum'
+import { requireEnv } from '../../@common/config/env'
+import type { RoleEnum } from '../../@common/enums/role.enum'
+import type { CurrentUserPayload } from '../decorators/current-user.decorator'
 
 interface JwtPayload {
-  sub: string
-  role: RoleEnum
+  sub: number
+  roles: RoleEnum[]
 }
 
 @Injectable()
@@ -15,12 +17,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey:
-        process.env.JWT_SECRET ?? 'segredo-provisorio-trocar-em-producao'
+      secretOrKey: requireEnv('JWT_SECRET')
     })
   }
 
-  validate(payload: JwtPayload) {
-    return { userId: payload.sub, role: payload.role }
+  validate(payload: JwtPayload): CurrentUserPayload {
+    return { userId: payload.sub, roles: payload.roles }
   }
 }
