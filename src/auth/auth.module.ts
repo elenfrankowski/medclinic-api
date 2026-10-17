@@ -1,21 +1,20 @@
 import { Module } from '@nestjs/common'
 import { JwtModule } from '@nestjs/jwt'
 import { PassportModule } from '@nestjs/passport'
-import { TypeOrmModule } from '@nestjs/typeorm'
-import { SignOptions } from 'jsonwebtoken'
+import type { SignOptions } from 'jsonwebtoken'
 
 import { AuthController } from './auth.controller'
 import { AuthService } from './auth.service'
-import { UsuarioTypeormRepository } from './repositories/usuario-typeorm.repository'
 import { JwtStrategy } from './strategies/jwt.strategy'
-import { Usuario } from '../@common/entities/usuario.entity'
+import { requireEnv } from '../@common/config/env'
+import { UsersModule } from '../users/users.module'
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Usuario]),
+    UsersModule,
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET ?? 'segredo-provisorio-trocar-em-producao',
+      secret: requireEnv('JWT_SECRET'),
       signOptions: {
         expiresIn: (process.env.JWT_EXPIRES_IN ??
           '1h') as SignOptions['expiresIn']
@@ -23,11 +22,6 @@ import { Usuario } from '../@common/entities/usuario.entity'
     })
   ],
   controllers: [AuthController],
-  providers: [
-    AuthService,
-    { provide: 'USUARIO_REPOSITORY', useClass: UsuarioTypeormRepository },
-    JwtStrategy
-  ],
-  exports: [JwtStrategy, PassportModule, JwtModule, 'USUARIO_REPOSITORY']
+  providers: [AuthService, JwtStrategy]
 })
 export class AuthModule {}

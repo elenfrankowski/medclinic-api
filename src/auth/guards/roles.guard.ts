@@ -6,27 +6,26 @@ import {
 } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
 
-import { RoleEnum } from '../../@common/enums/role.enum'
+import type { RoleEnum } from '../../@common/enums/role.enum'
+import type { CurrentUserPayload } from '../decorators/current-user.decorator'
 import { ROLES_KEY } from '../decorators/roles.decorator'
-
-interface RequestUser {
-  role: RoleEnum
-}
 
 @Injectable()
 export class RolesGuard implements CanActivate {
   constructor(private readonly reflector: Reflector) {}
 
   canActivate(context: ExecutionContext): boolean {
-    const rolesPermitidas = this.reflector.getAllAndOverride<
+    const requiredRoles = this.reflector.getAllAndOverride<
       RoleEnum[] | undefined
     >(ROLES_KEY, [context.getHandler(), context.getClass()])
-    if (!rolesPermitidas || rolesPermitidas.length === 0) {
+    if (!requiredRoles || requiredRoles.length === 0) {
       return true
     }
 
-    const request = context.switchToHttp().getRequest<{ user: RequestUser }>()
-    if (!rolesPermitidas.includes(request.user.role)) {
+    const { user } = context
+      .switchToHttp()
+      .getRequest<{ user: CurrentUserPayload }>()
+    if (!user.roles.some((role) => requiredRoles.includes(role))) {
       throw new ForbiddenException(
         'Você não tem permissão para acessar este recurso.'
       )
