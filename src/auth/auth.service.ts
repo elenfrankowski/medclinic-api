@@ -1,67 +1,37 @@
-import {
-  ConflictException,
-  Inject,
-  Injectable,
-  UnauthorizedException
-} from '@nestjs/common'
+import { Inject, Injectable } from '@nestjs/common'
 import { JwtService } from '@nestjs/jwt'
 
-import { LoginDto } from './dtos/login.dto'
-import { RegistrarDto } from './dtos/registrar.dto'
-import { UsuarioRespostaDto } from './dtos/usuario-resposta.dto'
-import type { UsuarioRepository } from './repositories/usuario.repository'
-import { RoleEnum } from '../@common/enums/role.enum'
-import { compararHash, gerarHash } from '../@common/utils/hash.util'
+import type { AccessTokenDto } from './dtos/access-token.dto'
+import type { LoginDto } from './dtos/login.dto'
+import { DomainError } from '../@common/errors/domain-error'
+import { comparePassword } from '../@common/utils/hash.util'
+import {
+  USER_REPOSITORY,
+  type UserRepository
+} from '../users/repositories/user.repository'
 
 @Injectable()
 export class AuthService {
   constructor(
-    @Inject('USUARIO_REPOSITORY')
-    private readonly usuarioRepository: UsuarioRepository,
+    @Inject(USER_REPOSITORY) private readonly userRepository: UserRepository,
     private readonly jwtService: JwtService
   ) {}
 
-  async registrar(dto: RegistrarDto): Promise<UsuarioRespostaDto> {
-    const usuarioExistente = await this.usuarioRepository.buscarPorEmail(
-      dto.email
-    )
-    if (usuarioExistente) {
-      throw new ConflictException(
-        'Já existe um usuário cadastrado com esse e-mail.'
-      )
+  async login(dto: LoginDto): Promise<AccessTokenDto> {
+    const user = await this.userRepository.findByEmail(dto.email)
+    if (!user) {
+      throw new DomainError('CREDENCIAIS_INVALIDAS', 'Credenciais inválidas.')
     }
 
-    const senhaHash = await gerarHash(dto.senha)
-    const role = dto.role ?? RoleEnum.ATENDENTE
-    const usuario = await this.usuarioRepository.criar(
-      dto.nome,
-      dto.email,
-      senhaHash,
-      role
-    )
-
-    return {
-      id: usuario.id,
-      nome: usuario.nome,
-      email: usuario.email,
-      role: usuario.role,
-      criadoEm: usuario.criadoEm
-    }
-  }
-
-  async login(dto: LoginDto): Promise<{ accessToken: string }> {
-    const usuario = await this.usuarioRepository.buscarPorEmail(dto.email)
-    if (!usuario) {
-      throw new UnauthorizedException('Credenciais inválidas.')
+    const passwordMatches = await comparePassword(dto.password, user.password)
+    if (!passwordMatches) {
+      throw new DomainError('CREDENCIAIS_INVALIDAS', 'Credenciais inválidas.')
     }
 
-    const senhaConfere = await compararHash(dto.senha, usuario.senha)
-    if (!senhaConfere) {
-      throw new UnauthorizedException('Credenciais inválidas.')
-    }
-
-    const payload = { sub: usuario.id, role: usuario.role }
-    const accessToken = await this.jwtService.signAsync(payload)
+    const accessToken = await this.jwtService.signAsync({
+      sub: user.id,
+      roles: user.roles
+    })
     return { accessToken }
   }
 }
