@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 import { AuthModule } from './auth/auth.module'
 import { buildDataSourceOptions } from './database/database.config'
 import { HealthModule } from './health/health.module'
+import { PatientsModule } from './patients/patients.module'
 import { UsersModule } from './users/users.module'
 
 @Module({
@@ -11,6 +12,7 @@ import { UsersModule } from './users/users.module'
     TypeOrmModule.forRoot({ ...buildDataSourceOptions(), migrationsRun: true }),
     AuthModule,
     UsersModule,
+    PatientsModule,
     HealthModule
   ]
 })
