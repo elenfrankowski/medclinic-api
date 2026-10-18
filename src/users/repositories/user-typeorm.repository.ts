@@ -1,18 +1,11 @@
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { QueryFailedError, Repository } from 'typeorm'
+import { Repository } from 'typeorm'
 
 import type { CreateUserData, UserRepository } from './user.repository'
 import { User } from '../../@common/entities/user.entity'
 import { DomainError } from '../../@common/errors/domain-error'
-
-function isUniqueViolation(error: unknown): boolean {
-  if (!(error instanceof QueryFailedError)) {
-    return false
-  }
-  const driverError = error.driverError as { code?: string } | undefined
-  return driverError?.code === '23505'
-}
+import { isUniqueViolation } from '../../@common/utils/query-helpers'
 
 @Injectable()
 export class UserTypeormRepository implements UserRepository {
