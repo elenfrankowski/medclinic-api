@@ -1,6 +1,7 @@
 import type { DataSourceOptions } from 'typeorm'
 
 import { requireEnv } from '../@common/config/env'
+import { Doctor } from '../@common/entities/doctor.entity'
 import { Patient } from '../@common/entities/patient.entity'
 import { User } from '../@common/entities/user.entity'
 
@@ -17,7 +18,7 @@ export function buildDataSourceOptions(): DataSourceOptions {
     database: requireEnv('DB_NAME'),
     synchronize: false,
     logging: process.env.DB_LOGGING === 'true',
-    entities: [User, Patient],
+    entities: [User, Patient, Doctor],
     migrations: [`${migrationsDir}/*.${extension}`]
   }
 }
