@@ -4,6 +4,7 @@ import { requireEnv } from '../@common/config/env'
 import { Doctor } from '../@common/entities/doctor.entity'
 import { Patient } from '../@common/entities/patient.entity'
 import { User } from '../@common/entities/user.entity'
+import { WorkShift } from '../@common/entities/work-shift.entity'
 
 export function buildDataSourceOptions(): DataSourceOptions {
   const extension = __filename.endsWith('.ts') ? 'ts' : 'js'
@@ -18,7 +19,7 @@ export function buildDataSourceOptions(): DataSourceOptions {
     database: requireEnv('DB_NAME'),
     synchronize: false,
     logging: process.env.DB_LOGGING === 'true',
-    entities: [User, Patient, Doctor],
+    entities: [User, Patient, Doctor, WorkShift],
     migrations: [`${migrationsDir}/*.${extension}`]
   }
 }

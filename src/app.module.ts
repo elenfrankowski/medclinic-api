@@ -7,6 +7,7 @@ import { DoctorsModule } from './doctors/doctors.module'
 import { HealthModule } from './health/health.module'
 import { PatientsModule } from './patients/patients.module'
 import { UsersModule } from './users/users.module'
+import { WorkScheduleModule } from './work-schedule/work-schedule.module'
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { UsersModule } from './users/users.module'
     UsersModule,
     PatientsModule,
     DoctorsModule,
+    WorkScheduleModule,
     HealthModule
   ]
 })
