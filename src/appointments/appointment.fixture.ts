@@ -30,12 +30,17 @@ export function buildAppointmentRepositoryFake() {
       vi.fn<AppointmentTransaction['patientHasActiveAppointment']>(),
     insert: vi.fn<AppointmentTransaction['insert']>()
   }
+  const findById = vi.fn<AppointmentRepository['findById']>()
+  const transitionStatus = vi.fn<AppointmentRepository['transitionStatus']>()
   const lockRequests: { doctorId: number; patientId: number }[] = []
+
   const repository: AppointmentRepository = {
     runExclusively: (doctorId, patientId, work) => {
       lockRequests.push({ doctorId, patientId })
       return work(transaction)
-    }
+    },
+    findById,
+    transitionStatus
   }
-  return { repository, transaction, lockRequests }
+  return { repository, transaction, lockRequests, findById, transitionStatus }
 }
