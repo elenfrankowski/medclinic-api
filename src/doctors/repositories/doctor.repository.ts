@@ -18,5 +18,6 @@ export interface DoctorRepository {
   createWithUser(userData: CreateUserData, crm: string): Promise<Doctor>
   findById(id: number): Promise<Doctor | null>
   findByCrm(crm: string): Promise<Doctor | null>
+  findByUserId(userId: number): Promise<Doctor | null>
   list(filter: ListDoctorsFilter): Promise<DoctorPage>
 }

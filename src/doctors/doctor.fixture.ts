@@ -25,6 +25,7 @@ export function buildDoctorRepositoryFake() {
     createWithUser: vi.fn<DoctorRepository['createWithUser']>(),
     findById: vi.fn<DoctorRepository['findById']>(),
     findByCrm: vi.fn<DoctorRepository['findByCrm']>(),
+    findByUserId: vi.fn<DoctorRepository['findByUserId']>(),
     list: vi.fn<DoctorRepository['list']>()
   }
 }

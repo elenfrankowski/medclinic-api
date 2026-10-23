@@ -1,5 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common'
 
+import {
+  canViewAppointment,
+  findTransition,
+  isAuthorizedForTransition,
+  type Actor
+} from './appointment-access.rules'
 import { computeEndsAt, findMatchingShift } from './appointment-slot.rules'
 import {
   toAppointmentResponse,
@@ -10,6 +16,9 @@ import {
   APPOINTMENT_REPOSITORY,
   type AppointmentRepository
 } from './repositories/appointment.repository'
+import type { Appointment } from '../@common/entities/appointment.entity'
+import type { AppointmentStatusEnum } from '../@common/enums/appointment-status.enum'
+import { RoleEnum } from '../@common/enums/role.enum'
 import { DomainError } from '../@common/errors/domain-error'
 import {
   DOCTOR_REPOSITORY,
@@ -108,5 +117,85 @@ export class AppointmentsService {
     )
 
     return toAppointmentResponse(appointment)
+  }
+
+  async getById(id: number, actor: Actor): Promise<AppointmentResponseDto> {
+    const appointment = await this.findOrFail(id)
+
+    const isAppointmentDoctor = await this.isDoctorOfAppointment(
+      actor,
+      appointment
+    )
+    if (!canViewAppointment(actor.roles, isAppointmentDoctor)) {
+      throw new DomainError(
+        'ACESSO_NEGADO',
+        'Você não tem permissão para acessar esta consulta.'
+      )
+    }
+    return toAppointmentResponse(appointment)
+  }
+
+  async updateStatus(
+    id: number,
+    newStatus: AppointmentStatusEnum,
+    actor: Actor
+  ): Promise<AppointmentResponseDto> {
+    const appointment = await this.findOrFail(id)
+
+    const transition = findTransition(appointment.status, newStatus)
+    if (!transition) {
+      throw new DomainError(
+        'TRANSICAO_INVALIDA',
+        `Não é possível mudar a consulta de ${appointment.status} para ${newStatus}.`
+      )
+    }
+
+    const isAppointmentDoctor = await this.isDoctorOfAppointment(
+      actor,
+      appointment
+    )
+    if (
+      !isAuthorizedForTransition(transition, actor.roles, isAppointmentDoctor)
+    ) {
+      throw new DomainError(
+        'ACESSO_NEGADO',
+        'Você não tem permissão para esta mudança de status.'
+      )
+    }
+
+    const updated = await this.appointmentRepository.transitionStatus(
+      id,
+      appointment.status,
+      newStatus
+    )
+    if (!updated) {
+      throw new DomainError(
+        'TRANSICAO_INVALIDA',
+        'O status da consulta mudou durante a operação. Consulte novamente.'
+      )
+    }
+    return toAppointmentResponse(updated)
+  }
+
+  private async findOrFail(id: number): Promise<Appointment> {
+    const appointment = await this.appointmentRepository.findById(id)
+    if (!appointment) {
+      throw new DomainError(
+        'RECURSO_NAO_ENCONTRADO',
+        'Consulta não encontrada.'
+      )
+    }
+    return appointment
+  }
+
+  private async isDoctorOfAppointment(
+    actor: Actor,
+    appointment: Appointment
+  ): Promise<boolean> {
+    if (!actor.roles.includes(RoleEnum.DOCTOR)) {
+      return false
+    }
+    const doctor = await this.doctorRepository.findByUserId(actor.userId)
+    return doctor?.id === appointment.doctorId
   }
 }
