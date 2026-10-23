@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common'
+import { InjectRepository } from '@nestjs/typeorm'
 import {
   DataSource,
   EntityManager,
@@ -59,7 +60,12 @@ class TypeormAppointmentTransaction implements AppointmentTransaction {
 
 @Injectable()
 export class AppointmentTypeormRepository implements AppointmentRepository {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    @InjectRepository(Appointment)
+    private readonly repository: Repository<Appointment>,
+    private readonly dataSource: DataSource
+  ) {}
+
   runExclusively<T>(
     doctorId: number,
     patientId: number,
@@ -72,6 +78,25 @@ export class AppointmentTypeormRepository implements AppointmentRepository {
         new TypeormAppointmentTransaction(manager.getRepository(Appointment))
       )
     })
+  }
+
+  findById(id: number): Promise<Appointment | null> {
+    return this.repository.findOneBy({ id })
+  }
+
+  async transitionStatus(
+    id: number,
+    from: AppointmentStatusEnum,
+    to: AppointmentStatusEnum
+  ): Promise<Appointment | null> {
+    const result = await this.repository.update(
+      { id, status: from },
+      { status: to }
+    )
+    if (!result.affected) {
+      return null
+    }
+    return this.repository.findOneBy({ id })
   }
 
   private async lockDoctor(

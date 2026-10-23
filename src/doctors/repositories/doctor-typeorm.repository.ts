@@ -60,6 +60,10 @@ export class DoctorTypeormRepository implements DoctorRepository {
     return this.repository.findOneBy({ crm })
   }
 
+  findByUserId(userId: number): Promise<Doctor | null> {
+    return this.repository.findOne({ where: { user: { id: userId } } })
+  }
+
   async list({ name, page, pageSize }: ListDoctorsFilter): Promise<DoctorPage> {
     const [items, total] = await this.repository.findAndCount({
       where: name ? { user: { name: ILike(`%${escapeLike(name)}%`) } } : {},

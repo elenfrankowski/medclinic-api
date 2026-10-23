@@ -1,4 +1,5 @@
 import type { Appointment } from '../../@common/entities/appointment.entity'
+import type { AppointmentStatusEnum } from '../../@common/enums/appointment-status.enum'
 
 export const APPOINTMENT_REPOSITORY = 'APPOINTMENT_REPOSITORY'
 
@@ -29,4 +30,10 @@ export interface AppointmentRepository {
     patientId: number,
     work: (transaction: AppointmentTransaction) => Promise<T>
   ): Promise<T>
+  findById(id: number): Promise<Appointment | null>
+  transitionStatus(
+    id: number,
+    from: AppointmentStatusEnum,
+    to: AppointmentStatusEnum
+  ): Promise<Appointment | null>
 }
