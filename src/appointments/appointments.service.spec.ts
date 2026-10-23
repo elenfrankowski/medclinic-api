@@ -22,8 +22,11 @@ describe('AppointmentsService', () => {
   const doctorRepository = buildDoctorRepositoryFake()
   const patientRepository = buildPatientRepositoryFake()
   const workScheduleRepository = buildWorkScheduleRepositoryFake()
-  const { repository: appointmentRepository, transaction } =
-    buildAppointmentRepositoryFake()
+  const {
+    repository: appointmentRepository,
+    transaction,
+    lockRequests
+  } = buildAppointmentRepositoryFake()
   let service: AppointmentsService
 
   const tuesdayMorning = buildShift({
@@ -46,6 +49,7 @@ describe('AppointmentsService', () => {
   }
 
   beforeEach(() => {
+    lockRequests.length = 0
     vi.resetAllMocks()
     service = new AppointmentsService(
       appointmentRepository,
@@ -182,5 +186,21 @@ describe('AppointmentsService', () => {
       code: 'PACIENTE_INDISPONIVEL'
     })
     expect(transaction.insert).not.toHaveBeenCalled()
+  })
+
+  it('pede o bloqueio exclusivo do médico e do paciente ao gravar', async () => {
+    await service.create(dto)
+
+    expect(lockRequests).toEqual([{ doctorId: 3, patientId: 10 }])
+  })
+
+  it('não pede bloqueio quando o horário já falha na escala', async () => {
+    await expect(
+      service.create({ ...dto, startsAt: '2026-10-27T13:00:00-03:00' })
+    ).rejects.toMatchObject({
+      code: 'HORARIO_FORA_DA_ESCALA'
+    })
+
+    expect(lockRequests).toEqual([])
   })
 })
