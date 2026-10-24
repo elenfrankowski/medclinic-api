@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import {
+  Between,
   DataSource,
   EntityManager,
   LessThan,
@@ -82,6 +83,21 @@ export class AppointmentTypeormRepository implements AppointmentRepository {
 
   findById(id: number): Promise<Appointment | null> {
     return this.repository.findOneBy({ id })
+  }
+
+  findActiveByDoctorInPeriod(
+    doctorId: number,
+    start: Date,
+    endExclusive: Date
+  ): Promise<Appointment[]> {
+    return this.repository.find({
+      where: {
+        doctorId,
+        status: Not(AppointmentStatusEnum.CANCELLED),
+        startsAt: Between(start, new Date(endExclusive.getTime() - 1))
+      },
+      order: { startsAt: 'ASC', id: 'ASC' }
+    })
   }
 
   async transitionStatus(

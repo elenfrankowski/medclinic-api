@@ -36,4 +36,9 @@ export interface AppointmentRepository {
     from: AppointmentStatusEnum,
     to: AppointmentStatusEnum
   ): Promise<Appointment | null>
+  findActiveByDoctorInPeriod(
+    doctorId: number,
+    start: Date,
+    endExclusive: Date
+  ): Promise<Appointment[]>
 }

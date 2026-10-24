@@ -32,6 +32,8 @@ export function buildAppointmentRepositoryFake() {
   }
   const findById = vi.fn<AppointmentRepository['findById']>()
   const transitionStatus = vi.fn<AppointmentRepository['transitionStatus']>()
+  const findActiveByDoctorInPeriod =
+    vi.fn<AppointmentRepository['findActiveByDoctorInPeriod']>()
   const lockRequests: { doctorId: number; patientId: number }[] = []
 
   const repository: AppointmentRepository = {
@@ -40,7 +42,15 @@ export function buildAppointmentRepositoryFake() {
       return work(transaction)
     },
     findById,
-    transitionStatus
+    transitionStatus,
+    findActiveByDoctorInPeriod
   }
-  return { repository, transaction, lockRequests, findById, transitionStatus }
+  return {
+    repository,
+    transaction,
+    lockRequests,
+    findById,
+    transitionStatus,
+    findActiveByDoctorInPeriod
+  }
 }

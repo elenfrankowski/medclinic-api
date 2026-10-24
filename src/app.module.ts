@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm'
 
 import { AppointmentsModule } from './appointments/appointments.module'
 import { AuthModule } from './auth/auth.module'
+import { CalendarModule } from './calendar/calendar.module'
 import { buildDataSourceOptions } from './database/database.config'
 import { DoctorsModule } from './doctors/doctors.module'
 import { HealthModule } from './health/health.module'
@@ -19,6 +20,7 @@ import { WorkScheduleModule } from './work-schedule/work-schedule.module'
     DoctorsModule,
     WorkScheduleModule,
     AppointmentsModule,
+    CalendarModule,
     HealthModule
   ]
 })
