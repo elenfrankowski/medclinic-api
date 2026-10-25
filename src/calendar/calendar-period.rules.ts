@@ -1,7 +1,7 @@
 export const MAX_CALENDAR_SPAN_DAYS = 31
 
-const MS_PER_DAY = 86_400_000
-const CLINIC_UTC_OFFSET = '-03:00'
+export const MS_PER_DAY = 86_400_000
+export const CLINIC_UTC_OFFSET = '-03:00'
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 
 export type CalendarPeriodResult =

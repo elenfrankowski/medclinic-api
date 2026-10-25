@@ -6,12 +6,17 @@ import {
   isAuthorizedForTransition,
   type Actor
 } from './appointment-access.rules'
+import {
+  isRestrictedToOwnAppointments,
+  resolveAppointmentPeriod
+} from './appointment-filter.rules'
 import { computeEndsAt, findMatchingShift } from './appointment-slot.rules'
 import {
   toAppointmentResponse,
   type AppointmentResponseDto
 } from './dtos/appointment-response.dto'
 import type { CreateAppointmentDto } from './dtos/create-appointment.dto'
+import type { ListAppointmentsQueryDto } from './dtos/list-appointments-query.dto'
 import {
   APPOINTMENT_REPOSITORY,
   type AppointmentRepository
@@ -20,6 +25,7 @@ import type { Appointment } from '../@common/entities/appointment.entity'
 import type { AppointmentStatusEnum } from '../@common/enums/appointment-status.enum'
 import { RoleEnum } from '../@common/enums/role.enum'
 import { DomainError } from '../@common/errors/domain-error'
+import { buildPaginated, type Paginated } from '../@common/pagination/paginated'
 import {
   DOCTOR_REPOSITORY,
   type DoctorRepository
@@ -32,7 +38,6 @@ import {
   WORK_SCHEDULE_REPOSITORY,
   type WorkScheduleRepository
 } from '../work-schedule/repositories/work-schedule.repository'
-
 @Injectable()
 export class AppointmentsService {
   constructor(
@@ -117,6 +122,41 @@ export class AppointmentsService {
     )
 
     return toAppointmentResponse(appointment)
+  }
+
+  async list(
+    query: ListAppointmentsQueryDto,
+    actor: Actor
+  ): Promise<Paginated<AppointmentResponseDto>> {
+    const period = resolveAppointmentPeriod(query.from, query.to)
+    if (!period.ok) {
+      throw new DomainError('DADOS_INVALIDOS', period.reason)
+    }
+
+    let doctorId = query.doctorId
+    if (isRestrictedToOwnAppointments(actor.roles)) {
+      const ownDoctor = await this.doctorRepository.findByUserId(actor.userId)
+      if (!ownDoctor) {
+        return buildPaginated([], 0, query.page, query.pageSize)
+      }
+      doctorId = ownDoctor.id
+    }
+
+    const { items, total } = await this.appointmentRepository.list({
+      doctorId,
+      patientId: query.patientId,
+      status: query.status,
+      start: period.start,
+      endExclusive: period.endExclusive,
+      page: query.page,
+      pageSize: query.pageSize
+    })
+    return buildPaginated(
+      items.map(toAppointmentResponse),
+      total,
+      query.page,
+      query.pageSize
+    )
   }
 
   async getById(id: number, actor: Actor): Promise<AppointmentResponseDto> {
