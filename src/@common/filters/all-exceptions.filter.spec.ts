@@ -9,8 +9,8 @@ import {
 } from '@nestjs/common'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { DomainError, type ErrorCode } from '../errors/domain-error'
 import { AllExceptionsFilter } from './all-exceptions.filter'
+import { DomainError, type ErrorCode } from '../errors/domain-error'
 
 function buildHost() {
   const json = vi.fn<(body: unknown) => void>()
