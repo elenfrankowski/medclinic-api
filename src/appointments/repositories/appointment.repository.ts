@@ -10,6 +10,21 @@ export interface NewAppointmentData {
   endsAt: Date
 }
 
+export interface ListAppointmentsFilter {
+  doctorId?: number
+  patientId?: number
+  status?: AppointmentStatusEnum
+  start?: Date
+  endExclusive?: Date
+  page: number
+  pageSize: number
+}
+
+export interface AppointmentPage {
+  items: Appointment[]
+  total: number
+}
+
 export interface AppointmentTransaction {
   doctorHasActiveAppointment(
     doctorId: number,
@@ -42,4 +57,5 @@ export interface AppointmentRepository {
     endExclusive: Date
   ): Promise<Appointment[]>
   hasCareLink(doctorId: number, patientId: number): Promise<boolean>
+  list(filter: ListAppointmentsFilter): Promise<AppointmentPage>
 }

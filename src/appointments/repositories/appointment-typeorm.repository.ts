@@ -7,13 +7,17 @@ import {
   In,
   LessThan,
   MoreThan,
+  MoreThanOrEqual,
   Not,
-  Repository
+  Repository,
+  type FindOptionsWhere
 } from 'typeorm'
 
 import type {
+  AppointmentPage,
   AppointmentRepository,
   AppointmentTransaction,
+  ListAppointmentsFilter,
   NewAppointmentData
 } from './appointment.repository'
 import { Appointment } from '../../@common/entities/appointment.entity'
@@ -22,7 +26,6 @@ import { Patient } from '../../@common/entities/patient.entity'
 import { AppointmentStatusEnum } from '../../@common/enums/appointment-status.enum'
 import { DomainError } from '../../@common/errors/domain-error'
 import { CARE_LINK_STATUSES } from '../../medical-records/medical-record-access.rules'
-
 class TypeormAppointmentTransaction implements AppointmentTransaction {
   constructor(private readonly repository: Repository<Appointment>) {}
 
@@ -87,6 +90,7 @@ export class AppointmentTypeormRepository implements AppointmentRepository {
     return this.repository.findOneBy({ id })
   }
 
+  // startsAt sempre cai em minuto cheio, então subtrair 1 ms torna o limite superior exclusivo.
   findActiveByDoctorInPeriod(
     doctorId: number,
     start: Date,
@@ -106,6 +110,37 @@ export class AppointmentTypeormRepository implements AppointmentRepository {
     return this.repository.exists({
       where: { doctorId, patientId, status: In(CARE_LINK_STATUSES) }
     })
+  }
+
+  async list(filter: ListAppointmentsFilter): Promise<AppointmentPage> {
+    const where: FindOptionsWhere<Appointment> = {}
+    if (filter.doctorId !== undefined) {
+      where.doctorId = filter.doctorId
+    }
+    if (filter.patientId !== undefined) {
+      where.patientId = filter.patientId
+    }
+    if (filter.status !== undefined) {
+      where.status = filter.status
+    }
+    if (filter.start && filter.endExclusive) {
+      where.startsAt = Between(
+        filter.start,
+        new Date(filter.endExclusive.getTime() - 1)
+      )
+    } else if (filter.start) {
+      where.startsAt = MoreThanOrEqual(filter.start)
+    } else if (filter.endExclusive) {
+      where.startsAt = LessThan(filter.endExclusive)
+    }
+
+    const [items, total] = await this.repository.findAndCount({
+      where,
+      order: { startsAt: 'ASC', id: 'ASC' },
+      skip: (filter.page - 1) * filter.pageSize,
+      take: filter.pageSize
+    })
+    return { items, total }
   }
 
   async transitionStatus(
