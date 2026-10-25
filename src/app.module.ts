@@ -7,6 +7,7 @@ import { CalendarModule } from './calendar/calendar.module'
 import { buildDataSourceOptions } from './database/database.config'
 import { DoctorsModule } from './doctors/doctors.module'
 import { HealthModule } from './health/health.module'
+import { MedicalRecordsModule } from './medical-records/medical-records.module'
 import { PatientsModule } from './patients/patients.module'
 import { UsersModule } from './users/users.module'
 import { WorkScheduleModule } from './work-schedule/work-schedule.module'
@@ -21,6 +22,7 @@ import { WorkScheduleModule } from './work-schedule/work-schedule.module'
     WorkScheduleModule,
     AppointmentsModule,
     CalendarModule,
+    MedicalRecordsModule,
     HealthModule
   ]
 })

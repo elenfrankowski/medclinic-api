@@ -4,6 +4,7 @@ import {
   Between,
   DataSource,
   EntityManager,
+  In,
   LessThan,
   MoreThan,
   Not,
@@ -20,6 +21,7 @@ import { Doctor } from '../../@common/entities/doctor.entity'
 import { Patient } from '../../@common/entities/patient.entity'
 import { AppointmentStatusEnum } from '../../@common/enums/appointment-status.enum'
 import { DomainError } from '../../@common/errors/domain-error'
+import { CARE_LINK_STATUSES } from '../../medical-records/medical-record-access.rules'
 
 class TypeormAppointmentTransaction implements AppointmentTransaction {
   constructor(private readonly repository: Repository<Appointment>) {}
@@ -97,6 +99,12 @@ export class AppointmentTypeormRepository implements AppointmentRepository {
         startsAt: Between(start, new Date(endExclusive.getTime() - 1))
       },
       order: { startsAt: 'ASC', id: 'ASC' }
+    })
+  }
+
+  hasCareLink(doctorId: number, patientId: number): Promise<boolean> {
+    return this.repository.exists({
+      where: { doctorId, patientId, status: In(CARE_LINK_STATUSES) }
     })
   }
 
