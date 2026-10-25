@@ -11,6 +11,7 @@ import { WorkShift } from '../@common/entities/work-shift.entity'
 export function buildDataSourceOptions(): DataSourceOptions {
   const extension = __filename.endsWith('.ts') ? 'ts' : 'js'
   const migrationsDir = `${__dirname.replace(/\\/g, '/')}/migrations`
+  const sslEnabled = process.env.DB_SSL === 'true'
 
   return {
     type: 'postgres',
@@ -19,6 +20,11 @@ export function buildDataSourceOptions(): DataSourceOptions {
     username: requireEnv('DB_USER'),
     password: requireEnv('DB_PASSWORD'),
     database: requireEnv('DB_NAME'),
+    ssl: sslEnabled
+      ? {
+          rejectUnauthorized: process.env.DB_SSL_REJECT_UNAUTHORIZED !== 'false'
+        }
+      : false,
     synchronize: false,
     logging: process.env.DB_LOGGING === 'true',
     entities: [User, Patient, Doctor, WorkShift, Appointment, MedicalRecord],
