@@ -41,4 +41,5 @@ export interface AppointmentRepository {
     start: Date,
     endExclusive: Date
   ): Promise<Appointment[]>
+  hasCareLink(doctorId: number, patientId: number): Promise<boolean>
 }

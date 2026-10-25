@@ -3,6 +3,7 @@ import type { DataSourceOptions } from 'typeorm'
 import { requireEnv } from '../@common/config/env'
 import { Appointment } from '../@common/entities/appointment.entity'
 import { Doctor } from '../@common/entities/doctor.entity'
+import { MedicalRecord } from '../@common/entities/medical-record.entity'
 import { Patient } from '../@common/entities/patient.entity'
 import { User } from '../@common/entities/user.entity'
 import { WorkShift } from '../@common/entities/work-shift.entity'
@@ -20,7 +21,7 @@ export function buildDataSourceOptions(): DataSourceOptions {
     database: requireEnv('DB_NAME'),
     synchronize: false,
     logging: process.env.DB_LOGGING === 'true',
-    entities: [User, Patient, Doctor, WorkShift, Appointment],
+    entities: [User, Patient, Doctor, WorkShift, Appointment, MedicalRecord],
     migrations: [`${migrationsDir}/*.${extension}`]
   }
 }
