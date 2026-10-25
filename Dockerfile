@@ -13,6 +13,7 @@ RUN npm run build
 
 # ---- Etapa 2: execução ----
 FROM node:22-bookworm-slim AS runtime
+LABEL org.opencontainers.image.source="https://github.com/elenfrankowski/medclinic-api"
 ENV NODE_ENV=production
 WORKDIR /app
 
